@@ -92,7 +92,7 @@ python3 -m venv venv
 pip install --upgrade pip
 pip install -e .
 pip install uvicorn
-uvicorn app.main:api --debug
+uvicorn app.main:api --log-level debug --reload
 ```
 
 
