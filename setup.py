@@ -19,5 +19,5 @@ setup(
         "email-validator==1.0.3",
         "python-multipart==0.0.5",
     ],
-    tests_require=["pytest", "codecov", "requests", "pytest-cov"],
+    tests_require=["pytest", "codecov", "requests", "pytest-cov", "pytest-mock"],
 )

@@ -1,4 +1,5 @@
 import requests
+from requests.exceptions import ConnectionError
 from fastapi import APIRouter, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, UrlStr, Schema
