@@ -124,7 +124,27 @@ Hello world endpoint
 ***
 ## :wrench: Configuration
 
-**N/A**
+```bash
+export DEBUG=true
+export ROOT_SRC=${HOME}/src/dddc-petition-api
+
+export DB_URL=sqlite:///${ROOT_SRC}/db.sqlite3
+
+export JWT_ALGORITHM=HS256
+export JWT_TOKEN_SUBJECT=access
+export JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+export JWT_USERNAME=***
+export JWT_PASSWORD=***
+export JWT_RANDOM_SECRET=***
+
+export CONTRACTS_DIR=${ROOT_SRC}/app/contracts/src/
+
+export CREDENTIAL_ISSUER_USERNAME=***
+export CREDENTIAL_ISSUER_PASSWORD=***
+export CREDENTIAL_ISSUER_CREDENTIALS_DIR=${ROOT_SRC}/app/credentials/
+
+export PETITION_CONTROL_TOKEN=***
+```
 
 ***
 ## :clipboard: Testing
