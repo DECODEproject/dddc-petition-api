@@ -216,14 +216,15 @@ def test_second_sign(client):
     assert petition["petition"]["scores"]["neg"]["left"] != "Infinity"
 
 
-def test_tally(mocker, client):
-    def load_credentials(ciuid):
-        credential = '{"identifier":{"curve":"bls383","zenroom":"0.8.1","private":"e5b785e6131622ca526676fad40ff8e9ab66629642fe4d957422c59d9de8c67b","schema":"cred_keypair","public":"041760bc292c7f2fd0274041698c6d86060263cd06201ae734b0cdbad7d5281f59c04fb8174ca9f47ced35f14d8201014604896f830b6ff6bbbde995a534afc31d829b908d05e1368348fca124bd3c632cf535470746a56cc707a651fc9065eedb","encoding":"hex"},"credential":{"encoding":"hex","s":"043dab8ade97f8b14ebd02a40e2355f3fb6d52a4c5776f59d960740e069dd79a52e147d55a92098d72ffd72c43b88671813438b4c4ef6d0b45bf3cf16c6ac0d65d53c6f75cebf18916fb7030f7fd791ee6c349e4217d1d9e46124e8eeca7bbfebd","zenroom":"0.8.1","schema":"aggsigma","h":"0427fddcbb32874364799eef2e71ebedaadd0957aba3d88b104eeac5100f73f2e35762a0104b6e456d32535e0ce1423e320ad07289f541a6e83226fb838ccda8a19bd272b527a58f05838bc27913939679bc49479a1d5635e60a6fde1f2ee6fcfb","curve":"bls383"}}'
-        verifier = '{"issuer_identifier":{"verify":{"beta":"3d53f5f3c6b87285b4d16adf3f388aedb742e3cce535e0d7aa6f3d64c00636269258ea0166839242a22532e1850a9d5c18aff4e4c20fd1603611ee38bcee31c1fb55a63c3a54b931d91d5b99f53b45913d1947797760e6be7d63a9e761d8a54025cd8867eab8eaa59ffa326b31f5e507dbc76904dc1378daa0a987b79ca497cafac99f67e2dc0ff90f3f514070dae220524bb82745575a8328a7d03115c6af30852afb03088bd44e8f3893d14b2c399e0a25286772d312b0748093b180a5979c","alpha":"0029b4af71e33a40426e02c722f4fac1e60bdb83d20793045ec96bef24f7b71ae8570c673293c85c292fa8d83e10f4dc10946473fd2154aac5ad1027190fc84192e1cd325dbfadd10c2777b8a8831fd8f9768048f0d198442e8fd2f020d134210588fa17c13acec6eaf96b0473f418e6f614bc0316936928e77a6eb4720bb44d7862735cc6fb19e21ce5a5d3df398b3049460ae593373b14a8125480e64039f30dfadc4bc7e1d0ab7a9012b141f7dc319892c39a1a365d61fb2e46dbb992887a"}}}'
-        keys = '{"identifier":{"private":"e5b785e6131622ca526676fad40ff8e9ab66629642fe4d957422c59d9de8c67b","zenroom":"0.8.1","curve":"bls383","encoding":"hex","public":"041760bc292c7f2fd0274041698c6d86060263cd06201ae734b0cdbad7d5281f59c04fb8174ca9f47ced35f14d8201014604896f830b6ff6bbbde995a534afc31d829b908d05e1368348fca124bd3c632cf535470746a56cc707a651fc9065eedb","schema":"cred_keypair"}}'
-        return keys, verifier, credential
+def test_tally(client, mocker):
+    _credential = '{"identifier":{"curve":"bls383","zenroom":"0.8.1","private":"e5b785e6131622ca526676fad40ff8e9ab66629642fe4d957422c59d9de8c67b","schema":"cred_keypair","public":"041760bc292c7f2fd0274041698c6d86060263cd06201ae734b0cdbad7d5281f59c04fb8174ca9f47ced35f14d8201014604896f830b6ff6bbbde995a534afc31d829b908d05e1368348fca124bd3c632cf535470746a56cc707a651fc9065eedb","encoding":"hex"},"credential":{"encoding":"hex","s":"043dab8ade97f8b14ebd02a40e2355f3fb6d52a4c5776f59d960740e069dd79a52e147d55a92098d72ffd72c43b88671813438b4c4ef6d0b45bf3cf16c6ac0d65d53c6f75cebf18916fb7030f7fd791ee6c349e4217d1d9e46124e8eeca7bbfebd","zenroom":"0.8.1","schema":"aggsigma","h":"0427fddcbb32874364799eef2e71ebedaadd0957aba3d88b104eeac5100f73f2e35762a0104b6e456d32535e0ce1423e320ad07289f541a6e83226fb838ccda8a19bd272b527a58f05838bc27913939679bc49479a1d5635e60a6fde1f2ee6fcfb","curve":"bls383"}}'
+    _verifier = '{"issuer_identifier":{"verify":{"beta":"3d53f5f3c6b87285b4d16adf3f388aedb742e3cce535e0d7aa6f3d64c00636269258ea0166839242a22532e1850a9d5c18aff4e4c20fd1603611ee38bcee31c1fb55a63c3a54b931d91d5b99f53b45913d1947797760e6be7d63a9e761d8a54025cd8867eab8eaa59ffa326b31f5e507dbc76904dc1378daa0a987b79ca497cafac99f67e2dc0ff90f3f514070dae220524bb82745575a8328a7d03115c6af30852afb03088bd44e8f3893d14b2c399e0a25286772d312b0748093b180a5979c","alpha":"0029b4af71e33a40426e02c722f4fac1e60bdb83d20793045ec96bef24f7b71ae8570c673293c85c292fa8d83e10f4dc10946473fd2154aac5ad1027190fc84192e1cd325dbfadd10c2777b8a8831fd8f9768048f0d198442e8fd2f020d134210588fa17c13acec6eaf96b0473f418e6f614bc0316936928e77a6eb4720bb44d7862735cc6fb19e21ce5a5d3df398b3049460ae593373b14a8125480e64039f30dfadc4bc7e1d0ab7a9012b141f7dc319892c39a1a365d61fb2e46dbb992887a"}}}'
+    _keys = '{"identifier":{"private":"e5b785e6131622ca526676fad40ff8e9ab66629642fe4d957422c59d9de8c67b","zenroom":"0.8.1","curve":"bls383","encoding":"hex","public":"041760bc292c7f2fd0274041698c6d86060263cd06201ae734b0cdbad7d5281f59c04fb8174ca9f47ced35f14d8201014604896f830b6ff6bbbde995a534afc31d829b908d05e1368348fca124bd3c632cf535470746a56cc707a651fc9065eedb","schema":"cred_keypair"}}'
 
-    mocker.patch("app.utils.helpers.load_credentials", side_effect=load_credentials)
+    mocker.patch(
+        "app.routers.petitions.load_credentials",
+        return_value=(_keys, _verifier, _credential),
+    )
 
     r = client.post("/petitions/petition/tally", headers={"tally_api_key": "blabla"})
     assert r.status_code == 200
@@ -236,4 +237,5 @@ def test_count(client):
     )
     assert r.status_code == 200
     assert "uid" in r.json()
+    assert r.json()["result"] == 2
     assert r.json()["uid"] == "petition"
