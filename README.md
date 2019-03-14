@@ -146,6 +146,22 @@ export CREDENTIAL_ISSUER_CREDENTIALS_DIR=${ROOT_SRC}/app/credentials/
 export PETITION_CONTROL_TOKEN=***
 ```
 
+### Credentials folder
+The credential folder contains credential previously created from the credential issuer and are store in file per `sha256(credential_issuer_id)` and the following three things are stored:
+
+ * the credential object (output of 06-CITIZEN-aggregate-credential-signature.zencode) in form of filename **HEX**
+ * the verifier keys of the credential issuer (04-CREDENTIAL_ISSUER-publish-verifier.zencode) **HEX.verify**
+ * the private petition-api keys (01-CITIZEN-credential-keygen.zencode) **HEX.keys**
+ 
+ Eg. if the `CREDENTIAL_ISSUER_CREDENTIALS_DIR=${ROOT_SRC}/app/credentials/` and the `credential_issuer_uid='issuer_identifier'` like https://petitions.decodeproject.eu/uid then the folder /app/credentials contains the following files:
+ 
+ ```
+3b2332e905bd662448d7114d0626421b82deb33fcf3bafe3c284bdfb9f58e2c6
+3b2332e905bd662448d7114d0626421b82deb33fcf3bafe3c284bdfb9f58e2c6.keys
+3b2332e905bd662448d7114d0626421b82deb33fcf3bafe3c284bdfb9f58e2c6.verify
+ ```
+
+
 ***
 ## :clipboard: Testing
 
