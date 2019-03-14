@@ -1,18 +1,28 @@
+import json
+
 import requests
 from requests.exceptions import ConnectionError
 from fastapi import APIRouter, HTTPException, Security
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from pydantic import BaseModel, UrlStr, Schema
 from sqlalchemy.exc import IntegrityError
 from starlette.status import (
     HTTP_409_CONFLICT,
     HTTP_404_NOT_FOUND,
     HTTP_424_FAILED_DEPENDENCY,
+    HTTP_401_UNAUTHORIZED,
 )
+from zenroom.zenroom import Error
 
 from app.model import DBSession
-from app.model.petition import Petition
-from app.utils.helpers import CONTRACTS, zencode, load_credentials
+from app.model.petition import Petition, STATUS
+from app.utils.helpers import (
+    CONTRACTS,
+    zencode,
+    load_credentials,
+    debug,
+    allowed_to_tally,
+)
 
 router = APIRouter()
 security = OAuth2PasswordBearer(tokenUrl="/token")
@@ -27,9 +37,10 @@ async def get_one(petition_id: str, token: str = Security(security)):
     return p.publish()
 
 
-def _generate_petition_object(url):
-    r = requests.get(f"{url}/uid")
-    ci_uid = r.json()["credential_issuer_id"]
+def _generate_petition_object(url, ci_uid=None):
+    if not ci_uid:
+        r = requests.get(f"{url}/uid")
+        ci_uid = r.json()["credential_issuer_id"]
     _, issuer_verify, credential = load_credentials(ci_uid)
     petition_req = zencode(
         CONTRACTS.CREATE_PETITION, keys=credential, data=issuer_verify
@@ -111,17 +122,60 @@ class PetitionSignature(BaseModel):
     petition_signature: PetitionSignatureBody
 
 
-@router.post("/sign", tags=["petitions"])
-async def sign(signature: PetitionSignature, token: str = Security(security)):
-    petition_id = signature.petition_signature.uid_petition
+@router.post("/{petition_id}/sign", tags=["petitions"])
+async def sign(
+    petition_id: str, signature: PetitionSignature, token: str = Security(security)
+):
     p = Petition.by_pid(petition_id)
-    petition = zencode(CONTRACTS.ADD_SIGNATURE, keys=p.petition, data=signature.json())
+    if not p:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
+
+    try:
+        petition = zencode(
+            CONTRACTS.ADD_SIGNATURE, keys=p.petition, data=signature.json()
+        )
+    except Error as e:
+        debug(e)
+        raise HTTPException(
+            status_code=HTTP_424_FAILED_DEPENDENCY,
+            detail="Petition signature is duplicate or not valid",
+        )
     p.petition = petition
 
     DBSession.commit()
     return p.publish()
 
 
-@router.post("/tally", tags=["petitions"])
-async def tally(token: str = Security(security)):
-    pass
+tally_api_key = APIKeyHeader(name="tally_api_key")
+
+
+@router.post("/{petition_id}/tally", tags=["petitions"])
+async def tally(petition_id: str, token: str = Security(tally_api_key)):
+    if not allowed_to_tally(token):
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Not authorized to control this petition",
+        )
+    p = Petition.by_pid(petition_id)
+    if not p:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
+    _, issuer_verify, credential = load_credentials(p.credential_issuer_uid)
+    p.tally = zencode(CONTRACTS.TALLY_PETITION, keys=credential, data=p.petition)
+    DBSession.commit()
+    return p.publish()
+
+
+@router.post("/{petition_id}/count", tags=["petitions"])
+async def count(petition_id: str, token: str = Security(security)):
+    p = Petition.by_pid(petition_id)
+    if not p:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
+
+    if p.status != STATUS.CLOSED:
+        raise HTTPException(
+            status_code=HTTP_424_FAILED_DEPENDENCY, detail="Petition still open"
+        )
+
+    p.count = zencode(CONTRACTS.COUNT_PETITION, keys=p.tally, data=p.petition)
+    DBSession.commit()
+    return json.loads(p.count)

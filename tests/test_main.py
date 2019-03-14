@@ -1,10 +1,4 @@
-from starlette.testclient import TestClient
-
-from app.main import api
-
-
-def test_token():
-    client = TestClient(api)
+def test_token(client):
     r = client.post(
         "/token", data=dict(username="demo", password="demo", grant_type="password")
     )
@@ -12,8 +6,7 @@ def test_token():
     assert r.json()["token_type"] == "bearer"
 
 
-def test_wrong_auth():
-    client = TestClient(api)
+def test_wrong_auth(client):
     r = client.post(
         "/token", data=dict(username="fake", password="fake", grant_type="password")
     )

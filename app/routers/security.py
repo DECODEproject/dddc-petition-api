@@ -22,7 +22,7 @@ def create_access_token(*, data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
-    else:
+    else:  # pragma: no cover
         expire = datetime.utcnow() + timedelta(minutes=expiry)
 
     to_encode.update({"exp": expire, "sub": subject})

@@ -51,6 +51,11 @@ def load_credentials(ciuid):
     return keys, verifier, credential
 
 
+def allowed_to_tally(token):
+    # TODO:
+    return token == env("PETITION_CONTROL_TOKEN")
+
+
 def zencode(name, keys=None, data=None):
     script = get_contract(name)
     k = keys.encode() if keys else None
