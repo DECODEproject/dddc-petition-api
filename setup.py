@@ -14,7 +14,7 @@ setup(
         "inflect==2.1.0",
         "environs==4.1.0",
         "requests==2.21.0",
-        "SQLAlchemy==1.3.0",
+        "SQLAlchemy==1.3.1",
         "pre-commit==1.14.4",
         "pytest_runner==4.4",
         "email-validator==1.0.3",
