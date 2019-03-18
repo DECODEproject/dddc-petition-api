@@ -29,12 +29,14 @@ security = OAuth2PasswordBearer(tokenUrl="/token")
 
 
 @router.get("/{petition_id}", tags=["petitions"])
-async def get_one(petition_id: str, token: str = Security(security)):
+async def get_one(
+    petition_id: str, expand: bool = False, token: str = Security(security)
+):
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
 
-    return p.publish()
+    return p.publish(expand)
 
 
 def _generate_petition_object(url, ci_uid=None):
@@ -57,7 +59,7 @@ class PetitionIn(BaseModel):
 
 
 @router.post("/", tags=["petitions"])
-def create(petition: PetitionIn, token: str = Security(security)):
+def create(petition: PetitionIn, expand: bool = False, token: str = Security(security)):
     try:
         petition_object, ci_uid = _generate_petition_object(
             petition.credential_issuer_url
@@ -88,7 +90,7 @@ def create(petition: PetitionIn, token: str = Security(security)):
         raise HTTPException(
             status_code=HTTP_409_CONFLICT, detail="Duplicate Petition Id"
         )
-    return p.publish()
+    return p.publish(expand)
 
 
 class σ_prime(BaseModel):
@@ -124,7 +126,10 @@ class PetitionSignature(BaseModel):
 
 @router.post("/{petition_id}/sign", tags=["petitions"])
 async def sign(
-    petition_id: str, signature: PetitionSignature, token: str = Security(security)
+    petition_id: str,
+    signature: PetitionSignature,
+    expand: bool = False,
+    token: str = Security(security),
 ):
     p = Petition.by_pid(petition_id)
     if not p:
@@ -143,14 +148,16 @@ async def sign(
     p.petition = petition
 
     DBSession.commit()
-    return p.publish()
+    return p.publish(expand)
 
 
 tally_api_key = APIKeyHeader(name="tally_api_key")
 
 
 @router.post("/{petition_id}/tally", tags=["petitions"])
-async def tally(petition_id: str, token: str = Security(tally_api_key)):
+async def tally(
+    petition_id: str, expand: bool = False, token: str = Security(tally_api_key)
+):
     if not allowed_to_tally(token):
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
@@ -162,7 +169,7 @@ async def tally(petition_id: str, token: str = Security(tally_api_key)):
     _, issuer_verify, credential = load_credentials(p.credential_issuer_uid)
     p.tally = zencode(CONTRACTS.TALLY_PETITION, keys=credential, data=p.petition)
     DBSession.commit()
-    return p.publish()
+    return p.publish(expand)
 
 
 @router.post("/{petition_id}/count", tags=["petitions"])

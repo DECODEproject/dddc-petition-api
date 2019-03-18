@@ -27,13 +27,24 @@ class Petition(Base):
     def by_pid(cls, petition_id):
         return DBSession.query(cls).filter_by(petition_id=petition_id).first()
 
-    def publish(self):
-        return dict(
+    def publish(self, details=True):
+        fields = dict(
             petition_id=self.petition_id,
             credential_issuer_url=self.credential_issuer_url,
             updated_at=self.updated_at,
             status=self.status,
         )
+
+        optional_fields = dict(
+            petition=json.loads(self.petition) if self.petition else None,
+            tally=json.loads(self.tally) if self.tally else None,
+            count=json.loads(self.count) if self.count else None,
+        )
+
+        if details:
+            fields.update(optional_fields)
+
+        return fields
 
     @property
     def status(self):
