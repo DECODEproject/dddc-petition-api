@@ -8,7 +8,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "pyjwt==1.7.1",
-        "fastapi==0.7.1",
+        "fastapi==0.8.0",
         "zenroom==0.1.2",
         "uvicorn==0.4.6",
         "inflect==2.1.0",
