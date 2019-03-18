@@ -28,7 +28,9 @@ router = APIRouter()
 security = OAuth2PasswordBearer(tokenUrl="/token")
 
 
-@router.get("/{petition_id}", tags=["petitions"])
+@router.get(
+    "/{petition_id}", tags=["Petitions"], summary="Retrieves the petition by `id`"
+)
 async def get_one(
     petition_id: str, expand: bool = False, token: str = Security(security)
 ):
@@ -41,7 +43,7 @@ async def get_one(
 
 def _generate_petition_object(url, ci_uid=None):
     if not ci_uid:
-        r = requests.get(f"{url}/uid")
+        r = requests.get(f"{url.rstrip('/')}/uid")
         ci_uid = r.json()["credential_issuer_id"]
     _, issuer_verify, credential = load_credentials(ci_uid)
     petition_req = zencode(
@@ -58,7 +60,7 @@ class PetitionIn(BaseModel):
     credential_issuer_url: UrlStr
 
 
-@router.post("/", tags=["petitions"])
+@router.post("/", tags=["Petitions"], summary="Creates a new petition")
 def create(petition: PetitionIn, expand: bool = False, token: str = Security(security)):
     try:
         petition_object, ci_uid = _generate_petition_object(
@@ -124,13 +126,12 @@ class PetitionSignature(BaseModel):
     petition_signature: PetitionSignatureBody
 
 
-@router.post("/{petition_id}/sign", tags=["petitions"])
-async def sign(
-    petition_id: str,
-    signature: PetitionSignature,
-    expand: bool = False,
-    token: str = Security(security),
-):
+@router.post(
+    "/{petition_id}/sign",
+    tags=["Petitions"],
+    summary="Adds a petition signature to the petition object (signs a petition)",
+)
+async def sign(petition_id: str, signature: PetitionSignature, expand: bool = False):
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
@@ -154,7 +155,11 @@ async def sign(
 tally_api_key = APIKeyHeader(name="tally_api_key")
 
 
-@router.post("/{petition_id}/tally", tags=["petitions"])
+@router.post(
+    "/{petition_id}/tally",
+    tags=["Petitions"],
+    summary="Tally a petition, just by tally admins",
+)
 async def tally(
     petition_id: str, expand: bool = False, token: str = Security(tally_api_key)
 ):
@@ -172,7 +177,11 @@ async def tally(
     return p.publish(expand)
 
 
-@router.post("/{petition_id}/count", tags=["petitions"])
+@router.post(
+    "/{petition_id}/count",
+    tags=["Petitions"],
+    summary="Count the signs of a tallied petition",
+)
 async def count(petition_id: str, token: str = Security(security)):
     p = Petition.by_pid(petition_id)
     if not p:
