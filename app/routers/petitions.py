@@ -31,9 +31,7 @@ security = OAuth2PasswordBearer(tokenUrl="/token")
 @router.get(
     "/{petition_id}", tags=["Petitions"], summary="Retrieves the petition by `id`"
 )
-async def get_one(
-    petition_id: str, expand: bool = False, token: str = Security(security)
-):
+async def get_one(petition_id: str, expand: bool = False):
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
