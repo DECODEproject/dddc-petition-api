@@ -1,4 +1,5 @@
 import logging
+
 from pathlib import Path
 from hashlib import sha256
 from environs import Env
@@ -37,7 +38,7 @@ def debug(msg):
 
 def get_contract(name):
     contracts = Path(env("CONTRACTS_DIR"))
-    return contracts.joinpath(name).read_text().encode()
+    return contracts.joinpath(name).read_text()
 
 
 def load_credentials(ciuid):
@@ -52,12 +53,15 @@ def load_credentials(ciuid):
 
 
 def allowed_to_tally(token):
-    # TODO:
     return token == env("PETITION_CONTROL_TOKEN")
 
 
-def zencode(name, keys=None, data=None):
+def zencode(name, keys=None, data=None, placeholders={}):
     script = get_contract(name)
+    for k, v in placeholders.items():
+        script = script.replace(f"'{k}'", f"'{v}'")
+
+    script = script.encode()
     k = keys.encode() if keys else None
     a = data.encode() if data else None
     debug("+" * 50)

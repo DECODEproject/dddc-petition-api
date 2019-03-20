@@ -39,13 +39,17 @@ async def get_one(petition_id: str, expand: bool = False):
     return p.publish(expand)
 
 
-def _generate_petition_object(url, ci_uid=None):
+def _generate_petition_object(petition, ci_uid=None):
+    url = petition.credential_issuer_url
     if not ci_uid:
         r = requests.get(f"{url.rstrip('/')}/uid")
         ci_uid = r.json()["credential_issuer_id"]
     _, issuer_verify, credential = load_credentials(ci_uid)
     petition_req = zencode(
-        CONTRACTS.CREATE_PETITION, keys=credential, data=issuer_verify
+        CONTRACTS.CREATE_PETITION,
+        keys=credential,
+        data=issuer_verify,
+        placeholders={"petition": petition.petition_id},
     )
     petition = zencode(
         CONTRACTS.APPROVE_PETITION, keys=issuer_verify, data=petition_req
@@ -61,9 +65,7 @@ class PetitionIn(BaseModel):
 @router.post("/", tags=["Petitions"], summary="Creates a new petition")
 def create(petition: PetitionIn, expand: bool = False, token: str = Security(security)):
     try:
-        petition_object, ci_uid = _generate_petition_object(
-            petition.credential_issuer_url
-        )
+        petition_object, ci_uid = _generate_petition_object(petition)
     except FileNotFoundError:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
