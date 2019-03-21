@@ -1,9 +1,12 @@
 import json
 
+import jwt
 import requests
+from environs import Env
+from jwt import PyJWTError
 from requests.exceptions import ConnectionError
 from fastapi import APIRouter, HTTPException, Security
-from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, UrlStr, Schema
 from sqlalchemy.exc import IntegrityError
 from starlette.status import (
@@ -11,6 +14,7 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_424_FAILED_DEPENDENCY,
     HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
 )
 from zenroom.zenroom import Error
 
@@ -152,7 +156,9 @@ async def sign(petition_id: str, signature: PetitionSignature, expand: bool = Fa
     return p.publish(expand)
 
 
-tally_api_key = APIKeyHeader(name="tally_api_key")
+class TokenPayload(BaseModel):
+    username: str = None
+    password: str = None
 
 
 @router.post(
@@ -161,9 +167,20 @@ tally_api_key = APIKeyHeader(name="tally_api_key")
     summary="Tally a petition, just by tally admins",
 )
 async def tally(
-    petition_id: str, expand: bool = False, token: str = Security(tally_api_key)
+    petition_id: str, expand: bool = False, token: str = Security(security)
 ):
-    if not allowed_to_tally(token):
+    try:
+        env = Env()
+        env.read_env()
+        payload = jwt.decode(
+            token, env("JWT_RANDOM_SECRET"), algorithms=env("JWT_ALGORITHM")
+        )
+        token_data = TokenPayload(**payload)
+    except PyJWTError:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+        )
+    if not allowed_to_tally(token_data):
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Not authorized to control this petition",

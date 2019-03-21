@@ -9,7 +9,6 @@ set -o pipefail
 
 zenroom                                                            ../contracts/src/01-CITIZEN-credential-keygen.zencode              > keypair.keys
 zenroom -k keypair.keys                                            ../contracts/src/02-CITIZEN-credential-request.zencode             > blind_signature.req
-zenroom                                                            ../contracts/src/03-CREDENTIAL_ISSUER-keygen.zencode               > ci_keypair.keys
 zenroom -k ci_keypair.keys                                         ../contracts/src/04-CREDENTIAL_ISSUER-publish-verifier.zencode     > ci_verify_keypair.keys
 zenroom -k ci_keypair.keys            -a blind_signature.req       ../contracts/src/05-CREDENTIAL_ISSUER-credential-sign.zencode      > ci_signed_credential.json
 zenroom -k keypair.keys               -a ci_signed_credential.json ../contracts/src/06-CITIZEN-aggregate-credential-signature.zencode > credential.json
@@ -18,11 +17,8 @@ zenroom -k blindproof_credential.json -a ci_verify_keypair.keys    ../contracts/
 zenroom -k credential.json            -a ci_verify_keypair.keys    ../contracts/src/09-CITIZEN-create-petition.zencode                > petition_request.json
 zenroom -k ci_verify_keypair.keys     -a petition_request.json     ../contracts/src/10-VERIFIER-approve-petition.zencode              > petition.json
 zenroom -k credential.json            -a ci_verify_keypair.keys    ../contracts/src/11-CITIZEN-sign-petition.zencode                  > petition_signature.json
-zenroom -k petition.json              -a petition_signature.json   ../contracts/src/12-LEDGER-add-signed-petition.zencode             > petition-increase.json
-zenroom -k credential.json            -a petition-increase.json    ../contracts/src/13-CITIZEN-tally-petition.zencode                 > tally.json
-zenroom -k tally.json                 -a petition-increase.json    ../contracts/src/14-CITIZEN-count-petition.zencode
 
 mv keypair.keys 3b2332e905bd662448d7114d0626421b82deb33fcf3bafe3c284bdfb9f58e2c6.keys
 mv ci_verify_keypair.keys 3b2332e905bd662448d7114d0626421b82deb33fcf3bafe3c284bdfb9f58e2c6.verify
 mv credential.json 3b2332e905bd662448d7114d0626421b82deb33fcf3bafe3c284bdfb9f58e2c6
-rm blind_signature.req ci_keypair.keys ci_signed_credential.json blindproof_credential.json petition_request.json petition.json petition-increase.json
+rm blind_signature.req ci_keypair.keys ci_signed_credential.json blindproof_credential.json petition_request.json petition.json

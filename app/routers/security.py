@@ -16,6 +16,8 @@ with env.prefixed("JWT_"):
     username = env("USERNAME")
     password = env("PASSWORD")
     secret = env("RANDOM_SECRET")
+    tally_user = env("TALLY_USERNAME")
+    tally_pass = env("TALLY_PASSWORD")
 
 
 def create_access_token(*, data: dict, expires_delta: timedelta = None):
@@ -30,17 +32,26 @@ def create_access_token(*, data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
+def auth(u, p):
+    if u == username and p == password:
+        return True
+    if u == tally_user and p == tally_pass:
+        return True
+    return False
+
+
 @router.post(
     "/token",
     tags=["API auth"],
     summary="Obtain OAuth2/Bearer token for protected API calls",
 )
 def token(form_data: OAuth2PasswordRequestForm = Depends()):
-    if username != form_data.username or password != form_data.password:
+    if not auth(form_data.username, form_data.password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
     access_token_expires = timedelta(minutes=expiry)
     access_token = create_access_token(
-        data={"username": form_data.username}, expires_delta=access_token_expires
+        data={"username": form_data.username, "password": form_data.password},
+        expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}

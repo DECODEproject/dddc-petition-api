@@ -53,7 +53,9 @@ def load_credentials(ciuid):
 
 
 def allowed_to_tally(token):
-    return token == env("PETITION_CONTROL_TOKEN")
+    username = env("JWT_TALLY_USERNAME")
+    password = env("JWT_TALLY_PASSWORD")
+    return token.username == username and token.password == password
 
 
 def zencode(name, keys=None, data=None, placeholders={}):
