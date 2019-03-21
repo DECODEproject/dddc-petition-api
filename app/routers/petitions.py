@@ -184,7 +184,7 @@ async def tally(
     tags=["Petitions"],
     summary="Count the signs of a tallied petition",
 )
-async def count(petition_id: str, token: str = Security(security)):
+async def count(petition_id: str):
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")

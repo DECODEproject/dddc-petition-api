@@ -1,19 +1,29 @@
 import json
 import unittest
+import uuid
+
 import requests
 
 from app.utils.helpers import zencode, CONTRACTS
 
 CREDENTIALS_API_URL = "https://credentials.decodeproject.eu"
 PETITION_API_URL = "https://petitions.decodeproject.eu"
+PETITION_USERNAME = "***"
+PETITION_PASSWORD = "***"
+CREDENTIAL_ISSUER_USERNAME = "***"
+CREDENTIAL_ISSUER_PASSWORD = "***"
+AUTH_ATTR_CODE_VALID_VALUE = "***"
+TALLY_USERNAME = "***"
+TALLY_PASSWORD = "***"
 
 
-class IntegrationTester:
-    def __init__(self):
+class PetitionSignIntegrationTester:
+    def __init__(self, petition_id=None):
         self.verification_key = None
         self.sk = None
         self.credential = None
-        self.aa_id = "93de1fc34fab8497bdcb5e211ae96aba1416cc35"
+        self.aa_id = "***"
+        self.petition_id = petition_id
 
     @staticmethod
     def _auth_call(url, data):
@@ -31,10 +41,7 @@ class IntegrationTester:
     def get_credential(self):
         self.sk = zencode(CONTRACTS.CITIZEN_KEYGEN)
         blind_sign_request = zencode(CONTRACTS.CITIZEN_REQ_BLIND_SIG, keys=self.sk)
-        values = [
-            {"name": "DNI", "value": "111222333A"},
-            {"name": "Census postal code", "value": "08003"},
-        ]
+        values = [{"name": "code", "value": AUTH_ATTR_CODE_VALID_VALUE}]
 
         data = dict(
             authorizable_attribute_id=self.aa_id,
@@ -61,24 +68,81 @@ class IntegrationTester:
             CONTRACTS.SIGN_PETITION,
             keys=self.credential,
             data=json.dumps(self.verification_key),
+            placeholders={"petition": self.petition_id},
         )
 
     def sign_petition(self, petition_signature):
+        petition = self.petition_id if self.petition_id else "29"
         return self.petition_call(
-            "/petitions/some_petition_test/sign", data=json.loads(petition_signature)
+            f"/petitions/{petition}/sign", data=json.loads(petition_signature)
         )
 
     def run(self):
         self.aggregate_credential()
         petition_signature = self.petition_signature()
-        print(self.verification_key)
         return self.sign_petition(petition_signature)
 
 
-class IntegrationTest(unittest.TestCase):
-    def test_whole(self):
-        t = IntegrationTester()
-        result = t.run()
-        assert "credential_issuer_url" in result
+class PetitionTallyIntegrationTester:
+    def __init__(self):
+        self._get_token()
+        self.petition_id = None
+
+    def _get_token(self):
+        r = requests.post(
+            f"{PETITION_API_URL}/token",
+            data={"username": TALLY_USERNAME, "password": TALLY_PASSWORD},
+        )
+        self.petition_token = r.json()["access_token"]
+        return self.petition_token
+
+    @staticmethod
+    def _auth_call(url, data, token):
+        r = requests.post(url, json=data, headers={"Authorization": f"Bearer {token}"})
+        return r.json()
+
+    def petition_call(self, endpoint, data):
+        url = f"{PETITION_API_URL}{endpoint}"
+        return self._auth_call(url, data, self.petition_token)
+
+    def create_petition(self):
+        self.petition_id = str(uuid.uuid4())
+        data = dict(
+            petition_id=self.petition_id, credential_issuer_url=CREDENTIALS_API_URL
+        )
+        result = self.petition_call("/petitions/", data=data)
         assert "petition_id" in result
-        assert "status" in result
+        assert self.petition_id == result["petition_id"]
+        return result
+
+    def tally_petition(self):
+        r = requests.post(
+            f"{PETITION_API_URL}/token",
+            data=dict(
+                username=TALLY_USERNAME, password=TALLY_PASSWORD, grant_type="password"
+            ),
+        )
+        token = r.json()["access_token"]
+
+        r = requests.post(
+            f"{PETITION_API_URL}/petitions/{self.petition_id}/tally",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200
+        assert r.json()["status"] == "CLOSED"
+
+    def run(self):
+        self.create_petition()
+        t = PetitionSignIntegrationTester(petition_id=self.petition_id)
+        result = t.run()
+        assert "petition_id" in result
+        assert self.petition_id == result["petition_id"]
+        self.tally_petition()
+        return result
+
+
+class IntegrationTest(unittest.TestCase):
+    def test_whole_tally(self):
+        assert True
+        # t = PetitionTallyIntegrationTester()
+        # t.run()

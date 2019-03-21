@@ -261,9 +261,7 @@ def test_auth_tally(client, mocker):
 
 
 def test_count(client):
-    r = client.post(
-        "/petitions/petition/count", headers={"Authorization": "Bearer %s" % auth()}
-    )
+    r = client.post("/petitions/petition/count")
     assert r.status_code == 200
     assert "uid" in r.json()
     assert r.json()["result"] == 2
