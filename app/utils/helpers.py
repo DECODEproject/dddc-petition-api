@@ -2,8 +2,15 @@ import logging
 
 from pathlib import Path
 from hashlib import sha256
+
+import jwt
 from environs import Env
+from fastapi import HTTPException
+from jwt import PyJWTError
+from pydantic import BaseModel
+from starlette.status import HTTP_403_FORBIDDEN
 from zenroom import zenroom
+
 
 env = Env()
 env.read_env()
@@ -52,10 +59,26 @@ def load_credentials(ciuid):
     return keys, verifier, credential
 
 
-def allowed_to_tally(token):
+def allowed_to_control_petition(token):
+    class TokenPayload(BaseModel):
+        username: str = None
+        password: str = None
+
+    try:
+        payload = jwt.decode(
+            token, env("JWT_RANDOM_SECRET"), algorithms=env("JWT_ALGORITHM")
+        )
+        token_data = TokenPayload(**payload)
+    except PyJWTError:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+        )
     username = env("JWT_TALLY_USERNAME")
     password = env("JWT_TALLY_PASSWORD")
-    return token.username == username and token.password == password
+    if token_data.username == username and token_data.password == password:
+        return True
+
+    return False
 
 
 def zencode(name, keys=None, data=None, placeholders={}):

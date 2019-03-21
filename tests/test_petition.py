@@ -13,6 +13,15 @@ def auth():
     return r.json()["access_token"]
 
 
+def petition_auth():
+    client = TestClient(api)
+    r = client.post(
+        "/token",
+        data=dict(username="demotally", password="demotally", grant_type="password"),
+    )
+    return r.json()["access_token"]
+
+
 def test_create_petition(mocker, client):
     def get_petition(url):
         petition = '{"petition":{"owner":"041760bc292c7f2fd0274041698c6d86060263cd06201ae734b0cdbad7d5281f59c04fb8174ca9f47ced35f14d8201014604896f830b6ff6bbbde995a534afc31d829b908d05e1368348fca124bd3c632cf535470746a56cc707a651fc9065eedb","uid":"petition","scores":{"pos":{"right":"Infinity","left":"Infinity"},"schema":"petition_scores","curve":"bls383","neg":{"right":"Infinity","left":"Infinity"},"zenroom":"0.8.1","encoding":"hex"},"schema":"petition","curve":"bls383","zenroom":"0.8.1","encoding":"hex"},"verifier":{"beta":"3d53f5f3c6b87285b4d16adf3f388aedb742e3cce535e0d7aa6f3d64c00636269258ea0166839242a22532e1850a9d5c18aff4e4c20fd1603611ee38bcee31c1fb55a63c3a54b931d91d5b99f53b45913d1947797760e6be7d63a9e761d8a54025cd8867eab8eaa59ffa326b31f5e507dbc76904dc1378daa0a987b79ca497cafac99f67e2dc0ff90f3f514070dae220524bb82745575a8328a7d03115c6af30852afb03088bd44e8f3893d14b2c399e0a25286772d312b0748093b180a5979c","version":"63727970746f5f636f636f6e75742e6c756120312e30","schema":"issue_verify","alpha":"0029b4af71e33a40426e02c722f4fac1e60bdb83d20793045ec96bef24f7b71ae8570c673293c85c292fa8d83e10f4dc10946473fd2154aac5ad1027190fc84192e1cd325dbfadd10c2777b8a8831fd8f9768048f0d198442e8fd2f020d134210588fa17c13acec6eaf96b0473f418e6f614bc0316936928e77a6eb4720bb44d7862735cc6fb19e21ce5a5d3df398b3049460ae593373b14a8125480e64039f30dfadc4bc7e1d0ab7a9012b141f7dc319892c39a1a365d61fb2e46dbb992887a","curve":"bls383","zenroom":"0.8.1","encoding":"hex"}}'
@@ -25,7 +34,7 @@ def test_create_petition(mocker, client):
 
     resp = client.post(
         "/petitions",
-        headers={"Authorization": "Bearer %s" % auth()},
+        headers={"Authorization": "Bearer %s" % petition_auth()},
         allow_redirects=False,
     )
     r = client.post(
@@ -34,7 +43,7 @@ def test_create_petition(mocker, client):
             petition_id="petition",
             credential_issuer_url="https://petitions.decodeproject.eu",
         ),
-        headers={"Authorization": "Bearer %s" % auth()},
+        headers={"Authorization": "Bearer %s" % petition_auth()},
     )
     assert r.status_code == 200
     assert "petition_id" in r.json()
@@ -65,7 +74,7 @@ def test_not_found_petition(client):
 def test_not_found_ci_server(client):
     resp = client.post(
         "/petitions",
-        headers={"Authorization": "Bearer %s" % auth()},
+        headers={"Authorization": "Bearer %s" % petition_auth()},
         allow_redirects=False,
     )
     r = client.post(
@@ -73,7 +82,7 @@ def test_not_found_ci_server(client):
         json=dict(
             petition_id="petition", credential_issuer_url="https://supernonexistent.zzz"
         ),
-        headers={"Authorization": "Bearer %s" % auth()},
+        headers={"Authorization": "Bearer %s" % petition_auth()},
     )
     assert r.status_code == 424
     assert r.json()["detail"] == "Credential issuer server is not available"
@@ -91,7 +100,7 @@ def test_duplicate_create_petition(mocker, client):
 
     resp = client.post(
         "/petitions",
-        headers={"Authorization": "Bearer %s" % auth()},
+        headers={"Authorization": "Bearer %s" % petition_auth()},
         allow_redirects=False,
     )
     r = client.post(
@@ -100,7 +109,7 @@ def test_duplicate_create_petition(mocker, client):
             petition_id="petition",
             credential_issuer_url="https://petitions.decodeproject.eu",
         ),
-        headers={"Authorization": "Bearer %s" % auth()},
+        headers={"Authorization": "Bearer %s" % petition_auth()},
     )
     assert r.status_code == 409
     assert r.json()["detail"] == "Duplicate Petition Id"
@@ -226,15 +235,9 @@ def test_tally(client, mocker):
         return_value=(_keys, _verifier, _credential),
     )
 
-    client = TestClient(api)
     r = client.post(
-        "/token",
-        data=dict(username="demotally", password="demotally", grant_type="password"),
-    )
-    token = r.json()["access_token"]
-
-    r = client.post(
-        "/petitions/petition/tally", headers={"Authorization": f"Bearer {token}"}
+        "/petitions/petition/tally",
+        headers={"Authorization": f"Bearer {petition_auth()}"},
     )
     assert r.status_code == 200
     assert r.json()["status"] == "CLOSED"

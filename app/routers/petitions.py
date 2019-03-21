@@ -1,9 +1,6 @@
 import json
 
-import jwt
 import requests
-from environs import Env
-from jwt import PyJWTError
 from requests.exceptions import ConnectionError
 from fastapi import APIRouter, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer
@@ -14,7 +11,6 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_424_FAILED_DEPENDENCY,
     HTTP_401_UNAUTHORIZED,
-    HTTP_403_FORBIDDEN,
 )
 from zenroom.zenroom import Error
 
@@ -25,7 +21,7 @@ from app.utils.helpers import (
     zencode,
     load_credentials,
     debug,
-    allowed_to_tally,
+    allowed_to_control_petition,
 )
 
 router = APIRouter()
@@ -68,6 +64,11 @@ class PetitionIn(BaseModel):
 
 @router.post("/", tags=["Petitions"], summary="Creates a new petition")
 def create(petition: PetitionIn, expand: bool = False, token: str = Security(security)):
+    if not allowed_to_control_petition(token):
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Not authorized to control this petition",
+        )
     try:
         petition_object, ci_uid = _generate_petition_object(petition)
     except FileNotFoundError:
@@ -156,11 +157,6 @@ async def sign(petition_id: str, signature: PetitionSignature, expand: bool = Fa
     return p.publish(expand)
 
 
-class TokenPayload(BaseModel):
-    username: str = None
-    password: str = None
-
-
 @router.post(
     "/{petition_id}/tally",
     tags=["Petitions"],
@@ -169,18 +165,7 @@ class TokenPayload(BaseModel):
 async def tally(
     petition_id: str, expand: bool = False, token: str = Security(security)
 ):
-    try:
-        env = Env()
-        env.read_env()
-        payload = jwt.decode(
-            token, env("JWT_RANDOM_SECRET"), algorithms=env("JWT_ALGORITHM")
-        )
-        token_data = TokenPayload(**payload)
-    except PyJWTError:
-        raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
-        )
-    if not allowed_to_tally(token_data):
+    if not allowed_to_control_petition(token):
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Not authorized to control this petition",
