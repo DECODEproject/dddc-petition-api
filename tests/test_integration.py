@@ -1,7 +1,7 @@
 import json
-import unittest
 import uuid
 
+import pytest
 import requests
 
 from app.utils.helpers import zencode, CONTRACTS
@@ -141,8 +141,9 @@ class PetitionTallyIntegrationTester:
         return result
 
 
-class IntegrationTest(unittest.TestCase):
-    def test_whole_tally(self):
-        assert True
-        # t = PetitionTallyIntegrationTester()
-        # t.run()
+def test_whole_tally(request):
+    if not request.config.getoption("--with-integration-test"):
+        pytest.skip("Need --with-integration-test option to run")
+    else:
+        t = PetitionTallyIntegrationTester()
+        t.run()
