@@ -7,6 +7,7 @@ setup(
     author_email="puria@dyne.org",
     packages=find_packages(),
     install_requires=[
+        "bunch==1.0.1",
         "pyjwt==1.7.1",
         "fastapi==0.8.0",
         "zenroom==0.1.2",

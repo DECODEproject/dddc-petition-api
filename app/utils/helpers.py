@@ -48,15 +48,25 @@ def get_contract(name):
     return contracts.joinpath(name).read_text()
 
 
-def load_credentials(ciuid):
+def keys():
+    name = sha256(b"issuer_identifier").hexdigest()
     credentials = Path(env("CREDENTIAL_ISSUER_CREDENTIALS_DIR"))
-    name = sha256(ciuid.encode()).hexdigest()
-    debug(f"loading credentials for {ciuid} => {name}")
-    credential = credentials.joinpath(name).read_text()
-    verifier = credentials.joinpath(f"{name}.verify").read_text()
-    keys = credentials.joinpath(f"{name}.keys").read_text()
+    return credentials.joinpath(f"{name}.keys").read_text()
 
-    return keys, verifier, credential
+
+def get_credential(aaid):
+    credentials = Path(env("CREDENTIAL_ISSUER_CREDENTIALS_DIR"))
+    name = sha256(aaid.encode()).hexdigest()
+    file = credentials.joinpath(name)
+    if file.is_file():
+        return file.read_text()
+    return False
+
+
+def save_credential(aaid, credential):
+    credentials = Path(env("CREDENTIAL_ISSUER_CREDENTIALS_DIR"))
+    name = sha256(aaid.encode()).hexdigest()
+    credentials.joinpath(name).write_text(credential)
 
 
 def allowed_to_control_petition(token):

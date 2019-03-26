@@ -1,8 +1,11 @@
 import json
+from typing import List, Dict
 
 import requests
+from bunch import Bunch
+from environs import Env
 from requests.exceptions import ConnectionError
-from fastapi import APIRouter, HTTPException, Security
+from fastapi import APIRouter, HTTPException, Security, Body
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, UrlStr, Schema
 from sqlalchemy.exc import IntegrityError
@@ -19,13 +22,17 @@ from app.model.petition import Petition, STATUS
 from app.utils.helpers import (
     CONTRACTS,
     zencode,
-    load_credentials,
     debug,
     allowed_to_control_petition,
+    keys,
+    get_credential,
+    save_credential,
 )
 
 router = APIRouter()
 security = OAuth2PasswordBearer(tokenUrl="/token")
+env = Env()
+env.read_env()
 
 
 @router.get(
@@ -39,20 +46,67 @@ async def get_one(petition_id: str, expand: bool = False):
     return p.publish(expand)
 
 
+def _get_token(url):
+    r = requests.post(
+        f"{url}/token",
+        data={
+            "username": env("CREDENTIAL_ISSUER_USERNAME"),
+            "password": env("CREDENTIAL_ISSUER_PASSWORD"),
+        },
+    )
+    return r.json()["access_token"]
+
+
+def _retrieve_credential(petition):
+    aaid = petition.authorizable_attribute_id
+    credential = get_credential(aaid)
+
+    if not credential:
+        url = petition.credential_issuer_url
+        value = petition.credential_issuer_petition_value
+        blind_sign_request = zencode(CONTRACTS.CITIZEN_REQ_BLIND_SIG, keys=keys())
+        data = dict(
+            authorizable_attribute_id=aaid,
+            blind_sign_request=json.loads(blind_sign_request),
+            optional_values=[],
+            values=value,
+        )
+        r = requests.post(
+            f"{url}/credential/",
+            json=data,
+            headers={"Authorization": f"Bearer {_get_token(url)}"},
+        )
+        credential_request = json.dumps(r.json())
+        credential = zencode(
+            CONTRACTS.AGGREGATE_CREDENTIAL, keys=keys(), data=credential_request
+        )
+        save_credential(aaid, credential)
+
+    return credential
+
+
+def _retrieve_verification_key(petition):
+    url = petition.credential_issuer_url
+    aaid = petition.authorizable_attribute_id
+    r = requests.get(f"{url}/authorizable_attribute/{aaid}")
+    return r.json()["verification_key"]
+
+
 def _generate_petition_object(petition, ci_uid=None):
     url = petition.credential_issuer_url
     if not ci_uid:
         r = requests.get(f"{url.rstrip('/')}/uid")
         ci_uid = r.json()["credential_issuer_id"]
-    _, issuer_verify, credential = load_credentials(ci_uid)
+    issuer_verify = _retrieve_verification_key(petition)
+    credential = _retrieve_credential(petition)
     petition_req = zencode(
         CONTRACTS.CREATE_PETITION,
         keys=credential,
-        data=issuer_verify,
+        data=json.dumps(issuer_verify),
         placeholders={"petition": petition.petition_id},
     )
     petition = zencode(
-        CONTRACTS.APPROVE_PETITION, keys=issuer_verify, data=petition_req
+        CONTRACTS.APPROVE_PETITION, keys=json.dumps(issuer_verify), data=petition_req
     )
     return petition, ci_uid
 
@@ -60,6 +114,8 @@ def _generate_petition_object(petition, ci_uid=None):
 class PetitionIn(BaseModel):
     petition_id: str
     credential_issuer_url: UrlStr
+    authorizable_attribute_id: str
+    credential_issuer_petition_value: List[Dict]
 
 
 @router.post("/", tags=["Petitions"], summary="Creates a new petition")
@@ -157,13 +213,20 @@ async def sign(petition_id: str, signature: PetitionSignature, expand: bool = Fa
     return p.publish(expand)
 
 
+class TallyBody(BaseModel):
+    authorizable_attribute_id: str
+
+
 @router.post(
     "/{petition_id}/tally",
     tags=["Petitions"],
     summary="Tally a petition, just by tally admins",
 )
 async def tally(
-    petition_id: str, expand: bool = False, token: str = Security(security)
+    petition_id: str,
+    authorizable_attribute: TallyBody = Body(...),
+    expand: bool = False,
+    token: str = Security(security),
 ):
     if not allowed_to_control_petition(token):
         raise HTTPException(
@@ -173,7 +236,12 @@ async def tally(
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
-    _, issuer_verify, credential = load_credentials(p.credential_issuer_uid)
+    petition = Bunch(
+        petition_id=petition_id,
+        credential_issuer_url=p.credential_issuer_url,
+        authorizable_attribute_id=authorizable_attribute.authorizable_attribute_id,
+    )
+    credential = _retrieve_credential(petition)
     p.tally = zencode(CONTRACTS.TALLY_PETITION, keys=credential, data=p.petition)
     DBSession.commit()
     return p.publish(expand)
