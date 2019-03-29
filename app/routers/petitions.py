@@ -201,15 +201,17 @@ async def sign(petition_id: str, signature: PetitionSignature, expand: bool = Fa
         petition = zencode(
             CONTRACTS.ADD_SIGNATURE, keys=p.petition, data=signature.json()
         )
+        p.petition = petition
+        DBSession.commit()
     except Error as e:
+        debug(f"Failed to sign {p.petition_id}")
+        debug(p.petition)
         debug(e)
         raise HTTPException(
             status_code=HTTP_424_FAILED_DEPENDENCY,
             detail="Petition signature is duplicate or not valid",
         )
-    p.petition = petition
 
-    DBSession.commit()
     return p.publish(expand)
 
 
