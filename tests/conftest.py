@@ -3,6 +3,9 @@ from starlette.testclient import TestClient
 
 from app.main import api
 from app.model import Base, engine
+from app.utils.helpers import debug
+
+AAID = "aa_test_2"
 
 
 def pytest_addoption(parser):
@@ -18,6 +21,7 @@ def pytest_addoption(parser):
 def client(request):
     def fn():
         Base.metadata.drop_all(bind=engine)
+        debug("FINISH")
 
     request.addfinalizer(fn)
     return TestClient(api)

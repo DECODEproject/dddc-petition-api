@@ -106,7 +106,10 @@ def _generate_petition_object(petition, ci_uid=None):
         placeholders={"petition": petition.petition_id},
     )
     petition = zencode(
-        CONTRACTS.APPROVE_PETITION, keys=json.dumps(issuer_verify), data=petition_req
+        CONTRACTS.APPROVE_PETITION,
+        keys=json.dumps(issuer_verify),
+        data=petition_req,
+        placeholders={"issuer_identifier": ci_uid},
     )
     return petition, ci_uid
 
@@ -192,7 +195,7 @@ class PetitionSignature(BaseModel):
     tags=["Petitions"],
     summary="Adds a petition signature to the petition object (signs a petition)",
 )
-async def sign(petition_id: str, signature: PetitionSignature, expand: bool = False):
+def sign(petition_id: str, signature: PetitionSignature, expand: bool = False):
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")
@@ -201,6 +204,7 @@ async def sign(petition_id: str, signature: PetitionSignature, expand: bool = Fa
         petition = zencode(
             CONTRACTS.ADD_SIGNATURE, keys=p.petition, data=signature.json()
         )
+        json.loads(petition)
         p.petition = petition
         DBSession.commit()
     except Error as e:
@@ -224,7 +228,7 @@ class TallyBody(BaseModel):
     tags=["Petitions"],
     summary="Tally a petition, just by tally admins",
 )
-async def tally(
+def tally(
     petition_id: str,
     authorizable_attribute: TallyBody = Body(...),
     expand: bool = False,
@@ -254,7 +258,7 @@ async def tally(
     tags=["Petitions"],
     summary="Count the signs of a tallied petition",
 )
-async def count(petition_id: str):
+def count(petition_id: str):
     p = Petition.by_pid(petition_id)
     if not p:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Petition not Found")

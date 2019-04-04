@@ -6,6 +6,7 @@ from app.main import api
 from app.model.petition import Petition
 from app.routers.petitions import _retrieve_verification_key, _retrieve_credential
 from app.utils.helpers import zencode, CONTRACTS
+from tests.conftest import AAID
 
 
 def auth():
@@ -31,7 +32,7 @@ def test_create_petition(client):
         json=dict(
             petition_id="petition",
             credential_issuer_url="https://credentials.decodeproject.eu",
-            authorizable_attribute_id="aa_test",
+            authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[
                 {"name": "zip_code", "value": "08001"},
                 {"name": "email", "value": "puria@example.com"},
@@ -71,7 +72,7 @@ def test_not_found_ci_server(client):
         json=dict(
             petition_id="petition",
             credential_issuer_url="https://supernonexistent.zzz",
-            authorizable_attribute_id="aa_test",
+            authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[],
         ),
         headers={"Authorization": "Bearer %s" % petition_auth()},
@@ -86,7 +87,7 @@ def test_duplicate_create_petition(client):
         json=dict(
             petition_id="petition",
             credential_issuer_url="https://credentials.decodeproject.eu",
-            authorizable_attribute_id="aa_test",
+            authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[
                 {"name": "zip_code", "value": "08001"},
                 {"name": "email", "value": "puria@example.com"},
@@ -102,7 +103,7 @@ def test_sign(client):
     petition = Bunch(
         petition_id="petition",
         credential_issuer_url="https://credentials.decodeproject.eu",
-        authorizable_attribute_id="aa_test",
+        authorizable_attribute_id=AAID,
         credential_issuer_petition_value=[
             {"name": "zip_code", "value": "08001"},
             {"name": "email", "value": "puria@example.com"},
@@ -140,7 +141,7 @@ def test_duplicate_sign(client):
     petition = Bunch(
         petition_id="petition",
         credential_issuer_url="https://credentials.decodeproject.eu",
-        authorizable_attribute_id="aa_test",
+        authorizable_attribute_id=AAID,
         credential_issuer_petition_value=[
             {"name": "zip_code", "value": "08001"},
             {"name": "email", "value": "puria@example.com"},
@@ -170,7 +171,7 @@ def test_duplicate_sign(client):
 def test_tally(client):
     r = client.post(
         "/petitions/petition/tally",
-        json=dict(authorizable_attribute_id="aa_test"),
+        json=dict(authorizable_attribute_id=AAID),
         headers={"Authorization": f"Bearer {petition_auth()}"},
     )
     assert r.status_code == 200
@@ -180,7 +181,7 @@ def test_tally(client):
 def test_auth_tally(client, mocker):
     r = client.post(
         "/petitions/petition/tally",
-        json=dict(authorizable_attribute_id="aa_test"),
+        json=dict(authorizable_attribute_id=AAID),
         headers={"Authorization": f"Bearer {auth()}"},
     )
     assert r.status_code == 401

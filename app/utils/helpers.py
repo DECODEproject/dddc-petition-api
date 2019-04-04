@@ -108,4 +108,5 @@ def zencode(name, keys=None, data=None, placeholders={}):
     debug("+" * 50)
 
     result, _ = zenroom.execute(script=script, keys=k, data=a)
+
     return result.decode()
