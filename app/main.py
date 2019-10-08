@@ -9,7 +9,7 @@ Base.metadata.create_all(bind=engine)
 api = FastAPI(
     title="DDDC Petition API",
     description="Restful API for the Petition of the DDDC pilot project",
-    version="0.1.0",
+    version="0.2.0",
     redoc_url=None,
 )
 

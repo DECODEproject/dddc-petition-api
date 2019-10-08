@@ -15,7 +15,7 @@ from starlette.status import (
     HTTP_424_FAILED_DEPENDENCY,
     HTTP_401_UNAUTHORIZED,
 )
-from zenroom.zenroom import Error
+from zenroom.zenroom import ZenroomException
 
 from app.model import DBSession
 from app.model.petition import Petition, STATUS
@@ -103,13 +103,13 @@ def _generate_petition_object(petition, ci_uid=None):
         CONTRACTS.CREATE_PETITION,
         keys=credential,
         data=json.dumps(issuer_verify),
-        placeholders={"petition": petition.petition_id},
+        placeholders={"poll": petition.petition_id, "MadHatter": "issuer_identifier"},
     )
     petition = zencode(
         CONTRACTS.APPROVE_PETITION,
         keys=json.dumps(issuer_verify),
         data=petition_req,
-        placeholders={"issuer_identifier": ci_uid},
+        placeholders={"MadHatter": "issuer_identifier"},
     )
     return petition, ci_uid
 
@@ -187,7 +187,7 @@ class PetitionSignatureBody(BaseModel):
 
 
 class PetitionSignature(BaseModel):
-    petition_signature: PetitionSignatureBody
+    petition_signature: Dict
 
 
 @router.post(
@@ -202,12 +202,12 @@ def sign(petition_id: str, signature: PetitionSignature, expand: bool = False):
 
     try:
         petition = zencode(
-            CONTRACTS.ADD_SIGNATURE, keys=p.petition, data=signature.json()
+            CONTRACTS.INCREMENT_PETITION, keys=p.petition, data=signature.json()
         )
         json.loads(petition)
         p.petition = petition
         DBSession.commit()
-    except Error as e:
+    except ZenroomException as e:
         debug(f"Failed to sign {p.petition_id}")
         debug(p.petition)
         debug(e)

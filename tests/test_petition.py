@@ -20,9 +20,9 @@ def auth():
 def petition_auth():
     client = TestClient(api)
     r = client.post(
-        "/token",
-        data=dict(username="demotally", password="demotally", grant_type="password"),
+        "/token", data=dict(username="tdemo", password="tdemo", grant_type="password")
     )
+    print(r.json())
     return r.json()["access_token"]
 
 
@@ -31,7 +31,7 @@ def test_create_petition(client):
         "/petitions/",
         json=dict(
             petition_id="petition",
-            credential_issuer_url="https://credentials.decodeproject.eu",
+            credential_issuer_url="https://credential-test.dyne.org",
             authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[
                 {"name": "zip_code", "value": "08001"},
@@ -40,11 +40,11 @@ def test_create_petition(client):
         ),
         headers={"Authorization": f"Bearer {petition_auth()}"},
     )
-    assert r.status_code == 200
-    assert "petition_id" in r.json()
-    assert "credential_issuer_url" in r.json()
-    assert "updated_at" in r.json()
-    assert r.json()["status"] == "OPEN"
+    assert r.status_code == 200, r.json()
+    assert "petition_id" in r.json(), r.json()
+    assert "credential_issuer_url" in r.json(), r.json()
+    assert "updated_at" in r.json(), r.json()
+    assert r.json()["status"] == "OPEN", r.json()
 
 
 def test_get_petition(client):
@@ -86,7 +86,7 @@ def test_duplicate_create_petition(client):
         "/petitions/",
         json=dict(
             petition_id="petition",
-            credential_issuer_url="https://credentials.decodeproject.eu",
+            credential_issuer_url="https://credential-test.dyne.org",
             authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[
                 {"name": "zip_code", "value": "08001"},
@@ -102,7 +102,7 @@ def test_duplicate_create_petition(client):
 def test_sign(client):
     petition = Bunch(
         petition_id="petition",
-        credential_issuer_url="https://credentials.decodeproject.eu",
+        credential_issuer_url="https://credential-test.dyne.org",
         authorizable_attribute_id=AAID,
         credential_issuer_petition_value=[
             {"name": "zip_code", "value": "08001"},
@@ -113,14 +113,21 @@ def test_sign(client):
     vk = _retrieve_verification_key(petition)
     credential = _retrieve_credential(petition)
 
+    print(credential)
+    print(json.dumps(vk))
+    print(petition.petition_id)
+
     petition_signature = zencode(
         CONTRACTS.SIGN_PETITION,
         keys=credential,
         data=json.dumps(vk),
-        placeholders={"petition": petition.petition_id},
+        placeholders={
+            "petition": petition.petition_id,
+            "MadHatter": "issuer_identifier",
+        },
     )
 
-    print(petition_signature)
+    print("PETITION SIGNATURE", petition_signature)
 
     r = client.post(
         f"/petitions/{petition.petition_id}/sign",
@@ -140,7 +147,7 @@ def test_sign(client):
 def test_duplicate_sign(client):
     petition = Bunch(
         petition_id="petition",
-        credential_issuer_url="https://credentials.decodeproject.eu",
+        credential_issuer_url="https://credential-test.dyne.org",
         authorizable_attribute_id=AAID,
         credential_issuer_petition_value=[
             {"name": "zip_code", "value": "08001"},
@@ -155,7 +162,10 @@ def test_duplicate_sign(client):
         CONTRACTS.SIGN_PETITION,
         keys=credential,
         data=json.dumps(vk),
-        placeholders={"petition": petition.petition_id},
+        placeholders={
+            "petition": petition.petition_id,
+            "MadHatter": "issuer_identifier",
+        },
     )
 
     r = client.post(
@@ -191,6 +201,5 @@ def test_auth_tally(client, mocker):
 def test_count(client):
     r = client.post("/petitions/petition/count")
     assert r.status_code == 200
-    assert "uid" in r.json()
-    assert r.json()["result"] == 1
-    assert r.json()["uid"] == "petition"
+    assert "results" in r.json()
+    assert r.json()["results"]["pos"] == 1

@@ -11,26 +11,25 @@ from pydantic import BaseModel
 from starlette.status import HTTP_403_FORBIDDEN
 from zenroom import zenroom
 
-
 env = Env()
 env.read_env()
 
 
 class CONTRACTS:
-    ISSUER_KEYGEN = "03-CREDENTIAL_ISSUER-keygen.zencode"
-    PUBLIC_VERIFY = "04-CREDENTIAL_ISSUER-publish-verifier.zencode"
-    BLIND_SIGN = "05-CREDENTIAL_ISSUER-credential-sign.zencode"
-    CITIZEN_KEYGEN = "01-CITIZEN-credential-keygen.zencode"
-    CITIZEN_REQ_BLIND_SIG = "02-CITIZEN-credential-request.zencode"
-    AGGREGATE_CREDENTIAL = "06-CITIZEN-aggregate-credential-signature.zencode"
-    PROVE_CREDENTIAL = "07-CITIZEN-prove-credential.zencode"
-    VERIFY_CREDENTIAL = "08-VERIFIER-verify-credential.zencode"
-    CREATE_PETITION = "09-CITIZEN-create-petition.zencode"
-    APPROVE_PETITION = "10-VERIFIER-approve-petition.zencode"
-    SIGN_PETITION = "11-CITIZEN-sign-petition.zencode"
-    ADD_SIGNATURE = "12-LEDGER-add-signed-petition.zencode"
-    TALLY_PETITION = "13-CITIZEN-tally-petition.zencode"
-    COUNT_PETITION = "14-CITIZEN-count-petition.zencode"
+    ISSUER_KEYGEN = "issuer_keygen.zen"
+    PUBLIC_VERIFY = "publish_verifier.zen"
+    BLIND_SIGN = "issuer_sign.zen"
+    CITIZEN_KEYGEN = "credential_keygen.zen"
+    CITIZEN_REQ_BLIND_SIG = "create_request.zen"
+    AGGREGATE_CREDENTIAL = "aggregate_signature.zen"
+    PROVE_CREDENTIAL = "create_proof.zen"
+    VERIFY_CREDENTIAL = "verify_proof.zen"
+    CREATE_PETITION = "create_petition.zen"
+    APPROVE_PETITION = "approve_petition.zen"
+    SIGN_PETITION = "sign_petition.zen"
+    INCREMENT_PETITION = "aggregate_petition_signature.zen"
+    TALLY_PETITION = "tally_petition.zen"
+    COUNT_PETITION = "count_petition.zen"
 
 
 def get_logger():
@@ -96,9 +95,6 @@ def zencode(name, keys=None, data=None, placeholders={}):
     for k, v in placeholders.items():
         script = script.replace(f"'{k}'", f"'{v}'")
 
-    script = script.encode()
-    k = keys.encode() if keys else None
-    a = data.encode() if data else None
     debug("+" * 50)
     debug(f"EXECUTING {name}")
     debug(f"CODE: \n{script}")
@@ -107,6 +103,5 @@ def zencode(name, keys=None, data=None, placeholders={}):
     debug(f"KEYS: {keys}")
     debug("+" * 50)
 
-    result, _ = zenroom.execute(script=script, keys=k, data=a)
-
-    return result.decode()
+    result = zenroom.zencode_exec(script=script, keys=keys, data=data)
+    return result.stdout

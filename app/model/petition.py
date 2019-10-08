@@ -50,5 +50,5 @@ class Petition(Base):
     def status(self):
         if not self.tally:
             return "OPEN"
-        tally = "tally" in json.loads(self.tally)
+        tally = "petition_tally" in json.loads(self.tally)
         return STATUS.CLOSED if tally else STATUS.OPEN
