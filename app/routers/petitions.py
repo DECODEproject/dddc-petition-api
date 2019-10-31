@@ -19,6 +19,7 @@ from zenroom.zenroom import ZenroomException
 
 from app.model import DBSession
 from app.model.petition import Petition, STATUS
+from app.utils import sawtooth
 from app.utils.helpers import (
     CONTRACTS,
     zencode,
@@ -105,13 +106,20 @@ def _generate_petition_object(petition, ci_uid=None):
         data=json.dumps(issuer_verify),
         placeholders={"poll": petition.petition_id, "MadHatter": "issuer_identifier"},
     )
-    petition = zencode(
+    new_petition = zencode(
         CONTRACTS.APPROVE_PETITION,
         keys=json.dumps(issuer_verify),
         data=petition_req,
         placeholders={"MadHatter": "issuer_identifier"},
     )
-    return petition, ci_uid
+    try:
+        sawtooth.save_petition(petition_req, issuer_verify, petition.petition_id)
+    except ConnectionError:
+        raise HTTPException(
+            status_code=HTTP_424_FAILED_DEPENDENCY,
+            detail="Sawtooth server is unreachable. Please ask the system administrator to check SAWTOOTH_MIDDLEWARE_PETITION_API",
+        )
+    return new_petition, ci_uid
 
 
 class PetitionIn(BaseModel):
@@ -138,7 +146,7 @@ def create(petition: PetitionIn, expand: bool = False, token: str = Security(sec
     except ConnectionError:
         raise HTTPException(
             status_code=HTTP_424_FAILED_DEPENDENCY,
-            detail="Credential issuer server is not available",
+            detail="Credential issuer server is unreachable, please double check the 'credential_issuer_url' field",
         )
 
     p = Petition(
@@ -204,9 +212,9 @@ def sign(petition_id: str, signature: PetitionSignature, expand: bool = False):
         petition = zencode(
             CONTRACTS.INCREMENT_PETITION, keys=p.petition, data=signature.json()
         )
-        json.loads(petition)
         p.petition = petition
         DBSession.commit()
+        sawtooth.sign_petition(signature.json(), petition_id)
     except ZenroomException as e:
         debug(f"Failed to sign {p.petition_id}")
         debug(p.petition)
@@ -250,6 +258,7 @@ def tally(
     credential = _retrieve_credential(petition)
     p.tally = zencode(CONTRACTS.TALLY_PETITION, keys=credential, data=p.petition)
     DBSession.commit()
+    sawtooth.tally_petition(credential, petition_id)
     return p.publish(expand)
 
 

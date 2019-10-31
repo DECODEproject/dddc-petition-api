@@ -1,5 +1,5 @@
 import json
-
+import time
 from bunch import Bunch
 from starlette.testclient import TestClient
 from app.main import api
@@ -7,6 +7,8 @@ from app.model.petition import Petition
 from app.routers.petitions import _retrieve_verification_key, _retrieve_credential
 from app.utils.helpers import zencode, CONTRACTS
 from tests.conftest import AAID
+
+PETITION_ID = f"PETITION_{int(time.time())}"
 
 
 def auth():
@@ -22,7 +24,6 @@ def petition_auth():
     r = client.post(
         "/token", data=dict(username="tdemo", password="tdemo", grant_type="password")
     )
-    print(r.json())
     return r.json()["access_token"]
 
 
@@ -30,7 +31,7 @@ def test_create_petition(client):
     r = client.post(
         "/petitions/",
         json=dict(
-            petition_id="petition",
+            petition_id=PETITION_ID,
             credential_issuer_url="https://credential-test.dyne.org",
             authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[
@@ -41,7 +42,7 @@ def test_create_petition(client):
         headers={"Authorization": f"Bearer {petition_auth()}"},
     )
     assert r.status_code == 200, r.json()
-    assert "petition_id" in r.json(), r.json()
+    assert PETITION_ID in json.dumps(r.json())
     assert "credential_issuer_url" in r.json(), r.json()
     assert "updated_at" in r.json(), r.json()
     assert r.json()["status"] == "OPEN", r.json()
@@ -49,10 +50,10 @@ def test_create_petition(client):
 
 def test_get_petition(client):
     r = client.get(
-        "/petitions/petition", headers={"Authorization": "Bearer %s" % auth()}
+        f"/petitions/{PETITION_ID}", headers={"Authorization": "Bearer %s" % auth()}
     )
     assert r.status_code == 200
-    assert "petition_id" in r.json()
+    assert PETITION_ID in json.dumps(r.json())
     assert "credential_issuer_url" in r.json()
     assert "updated_at" in r.json()
     assert r.json()["status"] == "OPEN"
@@ -70,22 +71,23 @@ def test_not_found_ci_server(client):
     r = client.post(
         "/petitions/",
         json=dict(
-            petition_id="petition",
+            petition_id=PETITION_ID,
             credential_issuer_url="https://supernonexistent.zzz",
             authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[],
         ),
         headers={"Authorization": "Bearer %s" % petition_auth()},
     )
+    message = "Credential issuer server is unreachable, please double check the 'credential_issuer_url' field"
     assert r.status_code == 424
-    assert r.json()["detail"] == "Credential issuer server is not available"
+    assert r.json()["detail"] == message
 
 
 def test_duplicate_create_petition(client):
     r = client.post(
         "/petitions/",
         json=dict(
-            petition_id="petition",
+            petition_id=PETITION_ID,
             credential_issuer_url="https://credential-test.dyne.org",
             authorizable_attribute_id=AAID,
             credential_issuer_petition_value=[
@@ -101,7 +103,7 @@ def test_duplicate_create_petition(client):
 
 def test_sign(client):
     petition = Bunch(
-        petition_id="petition",
+        petition_id=PETITION_ID,
         credential_issuer_url="https://credential-test.dyne.org",
         authorizable_attribute_id=AAID,
         credential_issuer_petition_value=[
@@ -112,11 +114,6 @@ def test_sign(client):
 
     vk = _retrieve_verification_key(petition)
     credential = _retrieve_credential(petition)
-
-    print(credential)
-    print(json.dumps(vk))
-    print(petition.petition_id)
-
     petition_signature = zencode(
         CONTRACTS.SIGN_PETITION,
         keys=credential,
@@ -127,8 +124,6 @@ def test_sign(client):
         },
     )
 
-    print("PETITION SIGNATURE", petition_signature)
-
     r = client.post(
         f"/petitions/{petition.petition_id}/sign",
         headers={"Authorization": "Bearer %s" % auth()},
@@ -136,7 +131,8 @@ def test_sign(client):
     )
 
     assert r.status_code == 200
-    p = Petition.by_pid("petition")
+
+    p = Petition.by_pid(PETITION_ID)
     petition = json.loads(p.petition)
     assert petition["petition"]["scores"]["pos"]["right"] != "Infinity"
     assert petition["petition"]["scores"]["pos"]["left"] != "Infinity"
@@ -146,7 +142,7 @@ def test_sign(client):
 
 def test_duplicate_sign(client):
     petition = Bunch(
-        petition_id="petition",
+        petition_id=PETITION_ID,
         credential_issuer_url="https://credential-test.dyne.org",
         authorizable_attribute_id=AAID,
         credential_issuer_petition_value=[
@@ -180,7 +176,7 @@ def test_duplicate_sign(client):
 
 def test_tally(client):
     r = client.post(
-        "/petitions/petition/tally",
+        f"/petitions/{PETITION_ID}/tally",
         json=dict(authorizable_attribute_id=AAID),
         headers={"Authorization": f"Bearer {petition_auth()}"},
     )
@@ -190,7 +186,7 @@ def test_tally(client):
 
 def test_auth_tally(client, mocker):
     r = client.post(
-        "/petitions/petition/tally",
+        f"/petitions/{PETITION_ID}/tally",
         json=dict(authorizable_attribute_id=AAID),
         headers={"Authorization": f"Bearer {auth()}"},
     )
@@ -199,7 +195,8 @@ def test_auth_tally(client, mocker):
 
 
 def test_count(client):
-    r = client.post("/petitions/petition/count")
+    time.sleep(3)
+    r = client.post(f"/petitions/{PETITION_ID}/count")
     assert r.status_code == 200
     assert "results" in r.json()
     assert r.json()["results"]["pos"] == 1

@@ -12,7 +12,7 @@ setup(
         "zenroom==1.0.7rc0",
         "inflect==2.1.0",
         "environs==4.1.0",
-        "fastapi==0.41.0",
+        "fastapi==0.42.0",
         "requests==2.21.0",
         "SQLAlchemy==1.3.1",
         "pre-commit==1.14.4",

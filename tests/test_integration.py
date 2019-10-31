@@ -4,17 +4,21 @@ import uuid
 import pytest
 import requests
 
+from environs import Env
 from app.utils.helpers import zencode, CONTRACTS
 
-CREDENTIALS_API_URL = "https://credentials.decodeproject.eu"
-PETITION_API_URL = "https://petitions.decodeproject.eu"
-PETITION_USERNAME = "***"
-PETITION_PASSWORD = "***"
-CREDENTIAL_ISSUER_USERNAME = "***"
-CREDENTIAL_ISSUER_PASSWORD = "***"
-AUTH_ATTR_CODE_VALID_VALUE = "***"
-TALLY_USERNAME = "***"
-TALLY_PASSWORD = "***"
+env = Env()
+env.read_env()
+
+CREDENTIALS_API_URL = env("CREDENTIALS_API_URL")
+PETITION_API_URL = env("PETITION_API_URL")
+PETITION_USERNAME = env("PETITION_USERNAME")
+PETITION_PASSWORD = env("PETITION_PASSWORD")
+CREDENTIAL_ISSUER_USERNAME = env("CREDENTIAL_ISSUER_USERNAME")
+CREDENTIAL_ISSUER_PASSWORD = env("CREDENTIAL_ISSUER_PASSWORD")
+AUTH_ATTR_CODE_VALID_VALUE = env("AUTH_ATTR_CODE_VALID_VALUE")
+TALLY_USERNAME = env("TALLY_USERNAME")
+TALLY_PASSWORD = env("TALLY_PASSWORD")
 
 
 class PetitionSignIntegrationTester:

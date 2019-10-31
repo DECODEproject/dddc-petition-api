@@ -37,9 +37,9 @@ def get_logger():
 
 
 def debug(msg):
-    log = get_logger()
+    get_logger()
     if env.bool("DEBUG"):
-        log.debug(msg)
+        logging.debug(msg)
 
 
 def get_contract(name):
