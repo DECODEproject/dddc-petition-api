@@ -14,7 +14,7 @@ setup(
         "environs==4.1.0",
         "fastapi==0.41.0",
         "requests==2.21.0",
-        "SQLAlchemy==1.3.1",
+        "SQLAlchemy==1.3.20",
         "pre-commit==1.14.4",
         "email-validator==1.0.3",
         "python-multipart==0.0.5",
