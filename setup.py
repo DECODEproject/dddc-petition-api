@@ -16,7 +16,7 @@ setup(
         "requests==2.21.0",
         "SQLAlchemy==1.3.1",
         "pre-commit==1.14.4",
-        "email-validator==1.0.3",
+        "email-validator==1.1.2",
         "python-multipart==0.0.5",
     ],
     setup_requires=["pytest-runner"],
