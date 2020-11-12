@@ -13,7 +13,7 @@ setup(
         "inflect==2.1.0",
         "environs==4.1.0",
         "fastapi==0.41.0",
-        "requests==2.21.0",
+        "requests==2.25.0",
         "SQLAlchemy==1.3.1",
         "pre-commit==1.14.4",
         "email-validator==1.0.3",
