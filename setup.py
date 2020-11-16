@@ -10,7 +10,7 @@ setup(
         "bunch==1.0.1",
         "pyjwt==1.7.1",
         "zenroom==1.0.7rc0",
-        "inflect==2.1.0",
+        "inflect==5.0.2",
         "environs==4.1.0",
         "fastapi==0.41.0",
         "requests==2.21.0",
